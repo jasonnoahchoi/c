@@ -388,10 +388,14 @@ def copy_to_clipboard(text: str) -> bool:
         return False
 
 
-def save_to_file(text: str, path: str) -> bool:
-    """Save text to file. Returns True on success."""
+def save_to_file(text: str, path: str, fmt: str) -> bool:
+    """Save text to file. Auto-appends extension if missing. Returns True on success."""
     try:
         filepath = Path(path).expanduser().resolve()
+        # Auto-append extension if the path has no suffix
+        if not filepath.suffix:
+            ext_map = {"md": ".md", "txt": ".txt", "json": ".json"}
+            filepath = filepath.with_suffix(ext_map.get(fmt, ".md"))
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(text, encoding="utf-8")
         return True
@@ -451,22 +455,19 @@ def display_help():
     """Display usage help to stderr."""
     print("""Usage: /c [options]
 
-Copy & Export Claude responses from the current session.
+Copy & export Claude responses from the current session.
 
-Commands:
-  /c                  Copy last assistant response to clipboard
+  /c                  Copy last response to clipboard
   /c 2                Copy 2nd most recent response
   /c -3               Copy last 3 responses
-  /c -p 3             Copy last 3 rounds (user + assistant pairs)
-  /c --all, -a        Copy full conversation
+  /c -p 3             Copy last 3 rounds (prompts + responses)
+  /c --all            Copy full conversation
   /c list [N]         List recent N responses (default 10)
-  /c find "term"      Search responses for matching text
-
-Flags (combinable):
-  -t, --think         Include thinking blocks in output
-  -s <filepath>       Save to file instead of clipboard
-  -f md|txt|json      Output format (default: txt for clipboard, md for -s)
-  --help, -h          Show this help""", file=sys.stderr)
+  /c find "term"      Search responses
+  -t, --think         Include thinking blocks
+  -s <path>           Save to file (auto-appends .md/.txt/.json if no extension)
+  -f md|txt|json      Output format (default: txt for clipboard, md for file)
+  --help              Show this help""", file=sys.stderr)
 
 
 def display_list(rounds: List[Round], count: int):
@@ -588,11 +589,18 @@ def main():
     # Format output
     output = format_output(selected, args, session_id)
 
+    # Determine effective format
+    effective_fmt = args.format if args.format else ("md" if args.save_path else "txt")
+
     # Deliver
     if args.save_path:
-        if save_to_file(output, args.save_path):
-            path_display = args.save_path
-            block_with_reason(f"✅ Saved to {path_display}")
+        if save_to_file(output, args.save_path, effective_fmt):
+            # Show the actual path (with auto-appended extension)
+            display_path = args.save_path
+            if not Path(args.save_path).suffix:
+                ext_map = {"md": ".md", "txt": ".txt", "json": ".json"}
+                display_path += ext_map.get(effective_fmt, ".md")
+            block_with_reason(f"✅ Saved to {display_path}")
         else:
             print(f"Failed to save to {args.save_path}", file=sys.stderr)
             block_with_stderr()
