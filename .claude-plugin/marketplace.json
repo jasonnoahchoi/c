@@ -1,0 +1,28 @@
+{
+  "name": "c",
+  "owner": {
+    "name": "Jason Noah Choi",
+    "email": ""
+  },
+  "metadata": {
+    "description": "Claude Code conversation export tools"
+  },
+  "plugins": [
+    {
+      "name": "c",
+      "source": {
+        "source": "github",
+        "repo": "jasonnoahchoi/c"
+      },
+      "description": "Copy & export Claude Code conversation responses to clipboard or file",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jason Noah Choi"
+      },
+      "repository": "https://github.com/jasonnoahchoi/c",
+      "license": "MIT",
+      "keywords": ["export", "clipboard", "copy", "transcript"],
+      "category": "productivity"
+    }
+  ]
+}
