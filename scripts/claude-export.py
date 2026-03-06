@@ -63,7 +63,7 @@ def parse_args(prompt: str) -> Optional[Args]:
     prompt = prompt.strip()
 
     # Match /c, /copy, /copy-response (with optional arguments)
-    match = re.match(r"^/(c|copy|copy-response)(?:\s+(.*))?$", prompt)
+    match = re.match(r"^/(c:this|c|copy|copy-response)(?:\s+(.*))?$", prompt)
     if not match:
         return None
 
