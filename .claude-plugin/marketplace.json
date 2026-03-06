@@ -10,10 +10,7 @@
   "plugins": [
     {
       "name": "c",
-      "source": {
-        "source": "github",
-        "repo": "jasonnoahchoi/c"
-      },
+      "source": "./",
       "description": "Copy & export Claude Code conversation responses to clipboard or file",
       "version": "1.0.0",
       "author": {
