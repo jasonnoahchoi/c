@@ -62,7 +62,7 @@ def read_sidecar() -> dict:
             age = datetime.now().timestamp() - SIDECAR_PATH.stat().st_mtime
             if age < 300:  # Only trust if updated in last 5 minutes
                 return json.loads(SIDECAR_PATH.read_text())
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         pass
     return {}
 
@@ -74,7 +74,7 @@ def get_git_branch(cwd: str) -> str:
             capture_output=True, text=True, timeout=5, cwd=cwd,
         )
         return result.stdout.strip() if result.returncode == 0 else ""
-    except Exception:
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return ""
 
 
@@ -93,7 +93,7 @@ def get_model_from_transcript(transcript_path: str) -> str:
                 message = entry.get("message", {})
                 if message.get("role") == "assistant":
                     return message.get("model", "")
-    except Exception:
+    except OSError:
         pass
     return ""
 
@@ -274,9 +274,13 @@ def main():
         sys.exit(0)
 
     SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    os.chmod(SESSIONS_DIR, 0o700)
+
+    # Sanitize inputs used in filenames to prevent path traversal
+    session_prefix = "".join(c for c in session_id[:8] if c.isalnum())
+    safe_trigger = "".join(c for c in trigger if c.isalnum() or c in ("-", "_"))
 
     # Dedup: skip if a transcript for this session was saved in the last 60 seconds
-    session_prefix = session_id[:8]
     now = datetime.now()
     for existing in SESSIONS_DIR.glob(f"{session_prefix}-*.md"):
         age = now.timestamp() - existing.stat().st_mtime
@@ -284,7 +288,7 @@ def main():
             sys.exit(0)
 
     timestamp = now.strftime("%Y%m%d-%H%M%S")
-    filename = f"{session_prefix}-{timestamp}-{trigger}.md"
+    filename = f"{session_prefix}-{timestamp}-{safe_trigger}.md"
     output_path = SESSIONS_DIR / filename
 
     try:
@@ -292,6 +296,7 @@ def main():
         frontmatter = build_frontmatter(session_id, cwd, trigger, transcript_path, sidecar)
         content = format_transcript(rounds, frontmatter)
         output_path.write_text(content, encoding="utf-8")
+        os.chmod(output_path, 0o600)
         print(f"Session saved: {output_path}", file=sys.stderr)
     except Exception as e:
         print(f"Failed to save session: {e}", file=sys.stderr)
