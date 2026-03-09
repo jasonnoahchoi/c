@@ -5,12 +5,12 @@
     "email": ""
   },
   "metadata": {
-    "description": "Claude Code conversation export tools"
+    "description": "Claude Code conversation tools — copy, export, and save sessions"
   },
   "plugins": [
     {
-      "name": "c",
-      "source": "./",
+      "name": "c-copy",
+      "source": "./plugins/copy",
       "description": "Copy & export Claude Code conversation responses to clipboard or file",
       "version": "1.0.0",
       "author": {
@@ -19,6 +19,19 @@
       "repository": "https://github.com/jasonnoahchoi/c",
       "license": "MIT",
       "keywords": ["export", "clipboard", "copy", "transcript"],
+      "category": "productivity"
+    },
+    {
+      "name": "c-save",
+      "source": "./plugins/save",
+      "description": "Auto-save readable session transcripts before compact/clear wipes scrollback",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jason Noah Choi"
+      },
+      "repository": "https://github.com/jasonnoahchoi/c",
+      "license": "MIT",
+      "keywords": ["session", "transcript", "save", "precompact", "scrollback"],
       "category": "productivity"
     }
   ]
