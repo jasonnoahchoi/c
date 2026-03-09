@@ -25,9 +25,9 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 
     if [[ -f "$SETTINGS_PATH" ]]; then
         # Restore default statusline command
-        python3 -c "
-import json, sys
-p = '$SETTINGS_PATH'
+        SETTINGS_PATH="$SETTINGS_PATH" python3 -c "
+import json, os
+p = os.environ['SETTINGS_PATH']
 with open(p) as f: s = json.load(f)
 cmd = s.get('statusLine', {}).get('command', '')
 if 'statusline-wrapper' in cmd:
@@ -74,11 +74,11 @@ echo "Created $WRAPPER_PATH"
 
 # Update settings.json
 if [[ -f "$SETTINGS_PATH" ]]; then
-    python3 -c "
-import json
-p = '$SETTINGS_PATH'
+    WRAPPER_PATH="$WRAPPER_PATH" SETTINGS_PATH="$SETTINGS_PATH" python3 -c "
+import json, os
+p = os.environ['SETTINGS_PATH']
 with open(p) as f: s = json.load(f)
-s.setdefault('statusLine', {})['command'] = '$WRAPPER_PATH'
+s.setdefault('statusLine', {})['command'] = os.environ['WRAPPER_PATH']
 with open(p, 'w') as f: json.dump(s, f, indent=2)
 print('Updated statusLine.command in settings.json')
 "
