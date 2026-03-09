@@ -1,0 +1,12 @@
+{
+  "name": "c-save",
+  "version": "1.0.0",
+  "description": "Auto-save readable session transcripts before compact/clear wipes scrollback",
+  "author": {
+    "name": "Jason Noah Choi",
+    "url": "https://github.com/jasonnoahchoi"
+  },
+  "repository": "https://github.com/jasonnoahchoi/c",
+  "license": "MIT",
+  "keywords": ["session", "transcript", "save", "precompact", "scrollback"]
+}

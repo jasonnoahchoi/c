@@ -1,0 +1,12 @@
+{
+  "name": "c-copy",
+  "version": "1.0.0",
+  "description": "Copy & export Claude Code conversation responses to clipboard or file",
+  "author": {
+    "name": "Jason Noah Choi",
+    "url": "https://github.com/jasonnoahchoi"
+  },
+  "repository": "https://github.com/jasonnoahchoi/c",
+  "license": "MIT",
+  "keywords": ["export", "clipboard", "copy", "transcript"]
+}
