@@ -1,5 +1,5 @@
 {
-  "name": "c-save",
+  "name": "save",
   "version": "1.0.0",
   "description": "Auto-save readable session transcripts before compact/clear wipes scrollback",
   "author": {

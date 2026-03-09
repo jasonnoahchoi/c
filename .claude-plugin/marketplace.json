@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "c-copy",
+      "name": "copy",
       "source": "./plugins/copy",
       "description": "Copy & export Claude Code conversation responses to clipboard or file",
       "version": "1.0.0",
@@ -22,7 +22,7 @@
       "category": "productivity"
     },
     {
-      "name": "c-save",
+      "name": "save",
       "source": "./plugins/save",
       "description": "Auto-save readable session transcripts before compact/clear wipes scrollback",
       "version": "1.0.0",

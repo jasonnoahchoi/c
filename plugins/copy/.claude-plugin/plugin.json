@@ -1,5 +1,5 @@
 {
-  "name": "c-copy",
+  "name": "copy",
   "version": "1.0.0",
   "description": "Copy & export Claude Code conversation responses to clipboard or file",
   "author": {

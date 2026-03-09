@@ -4,24 +4,24 @@ A marketplace-style plugin collection for working with Claude Code conversations
 
 ## Plugins
 
-### c-copy
+### copy
 
 Copy & export conversation responses to clipboard or file.
 
 | Usage | Description |
 |-------|-------------|
-| `/c:this` | Copy last response to clipboard |
-| `/c:this N` | Copy Nth most recent response |
-| `/c:this -N` | Copy last N responses |
-| `/c:this --all` | Copy full conversation |
-| `/c:this -p N` | Copy last N rounds (prompt + response pairs) |
-| `/c:this list [N]` | List recent N responses with previews |
-| `/c:this find "term"` | Search responses |
+| `/copy:this` | Copy last response to clipboard |
+| `/copy:this N` | Copy Nth most recent response |
+| `/copy:this -N` | Copy last N responses |
+| `/copy:this --all` | Copy full conversation |
+| `/copy:this -p N` | Copy last N rounds (prompt + response pairs) |
+| `/copy:this list [N]` | List recent N responses with previews |
+| `/copy:this find "term"` | Search responses |
 | `-t` | Include thinking blocks |
 | `-s <path>` | Save to file instead of clipboard |
 | `-f md\|txt\|json` | Output format |
 
-### c-save
+### save
 
 Auto-save readable session transcripts to `~/.claude/sessions/` before compact/clear wipes terminal scrollback. Fires on `PreCompact` and `SessionEnd` events.
 
@@ -40,7 +40,7 @@ gitBranch: feature/cool-thing
 
 **Basic mode** (zero config): Saves session ID, timestamp, model, git branch, cwd.
 
-**Enriched mode** (optional): Run `/c-save:setup` to also capture cost, context window, worktree, and version data via a statusline sidecar wrapper.
+**Enriched mode** (optional): Run `/save:setup` to also capture cost, context window, worktree, and version data via a statusline sidecar wrapper.
 
 ## Install
 
@@ -55,12 +55,12 @@ c/
 ├── .claude-plugin/
 │   └── marketplace.json     # Plugin registry
 ├── plugins/
-│   ├── copy/                # c-copy: clipboard export
+│   ├── copy/                # copy: clipboard export
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── hooks/hooks.json
 │   │   ├── scripts/claude-export.py
 │   │   └── commands/this.md
-│   └── save/                # c-save: session preservation
+│   └── save/                # save: session preservation
 │       ├── .claude-plugin/plugin.json
 │       ├── hooks/hooks.json
 │       ├── scripts/save-session.py

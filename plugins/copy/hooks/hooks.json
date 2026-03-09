@@ -2,7 +2,7 @@
   "hooks": {
     "UserPromptSubmit": [
       {
-        "matcher": "^/c:this",
+        "matcher": "^/copy:this",
         "hooks": [
           {
             "type": "command",
