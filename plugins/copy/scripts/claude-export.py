@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Unified Conversation Export Hook (/c command)
+Unified Conversation Export Hook (/copy command)
 
-A UserPromptSubmit hook that intercepts /c commands, parses the transcript
+A UserPromptSubmit hook that intercepts /copy commands, parses the transcript
 JSONL directly, and delivers results to clipboard or file.
 
 Usage:
-    /c                  → copy last assistant response to clipboard
-    /c 2                → copy 2nd most recent response
-    /c -3               → copy last 3 assistant responses
-    /c -p 3             → copy last 3 rounds (user + assistant pairs)
-    /c --all            → copy full conversation
-    /c list [N]         → list recent N responses (default 10)
-    /c find "term"      → search responses
+    /copy               → copy last assistant response to clipboard
+    /copy 2             → copy 2nd most recent response
+    /copy -3            → copy last 3 assistant responses
+    /copy -p 3          → copy last 3 rounds (user + assistant pairs)
+    /copy --all         → copy full conversation
+    /copy list [N]      → list recent N responses (default 10)
+    /copy find "term"   → search responses
 
 Flags:
     -t, --think         → include thinking blocks in output
@@ -59,7 +59,7 @@ class Args:
 # ---------------------------------------------------------------------------
 
 def parse_args(prompt: str) -> Optional[Args]:
-    """Parse /c command arguments. Returns None if prompt doesn't match."""
+    """Parse /copy command arguments. Returns None if prompt doesn't match."""
     prompt = prompt.strip()
 
     # Match /copy:this, /copy, /copy-response (with optional arguments)
@@ -71,7 +71,7 @@ def parse_args(prompt: str) -> Optional[Args]:
     rest = (match.group(2) or "").strip()
 
     if not rest:
-        return args  # /c → copy last response
+        return args  # /copy → copy last response
 
     if rest in ("--help", "-h", "help"):
         args.mode = "help"
@@ -453,17 +453,17 @@ def format_time_ago(timestamp: str) -> str:
 
 def display_help():
     """Display usage help to stderr."""
-    print("""Usage: /c [options]
+    print("""Usage: /copy [options]
 
 Copy & export Claude responses from the current session.
 
-  /c                  Copy last response to clipboard
-  /c 2                Copy 2nd most recent response
-  /c -3               Copy last 3 responses
-  /c -p 3             Copy last 3 rounds (prompts + responses)
-  /c --all            Copy full conversation
-  /c list [N]         List recent N responses (default 10)
-  /c find "term"      Search responses
+  /copy               Copy last response to clipboard
+  /copy 2             Copy 2nd most recent response
+  /copy -3            Copy last 3 responses
+  /copy -p 3          Copy last 3 rounds (prompts + responses)
+  /copy --all         Copy full conversation
+  /copy list [N]      List recent N responses (default 10)
+  /copy find "term"   Search responses
   -t, --think         Include thinking blocks
   -s <path>           Save to file (auto-appends .md/.txt/.json if no extension)
   -f md|txt|json      Output format (default: txt for clipboard, md for file)
@@ -571,7 +571,7 @@ def main():
     # Handle find mode
     if args.mode == "find":
         if not args.search_term:
-            print("Usage: /c find \"search term\"", file=sys.stderr)
+            print("Usage: /copy find \"search term\"", file=sys.stderr)
             block_with_stderr()
         display_find(rounds, args.search_term)
         block_with_stderr()
