@@ -62,8 +62,8 @@ def read_sidecar() -> dict:
             age = datetime.now().timestamp() - SIDECAR_PATH.stat().st_mtime
             if age < 300:  # Only trust if updated in last 5 minutes
                 return json.loads(SIDECAR_PATH.read_text())
-    except (OSError, json.JSONDecodeError):
-        pass
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"save-session: sidecar read failed: {e}", file=sys.stderr)
     return {}
 
 
@@ -186,7 +186,7 @@ def build_frontmatter(
 
     # Git branch: prefer sidecar worktree, fallback to git command
     worktree = sidecar.get("worktree", {})
-    git_branch = worktree.get("branch", "") or get_git_branch(cwd) if cwd else ""
+    git_branch = worktree.get("branch", "") or (get_git_branch(cwd) if cwd else "")
 
     # Version
     version = sidecar.get("version", "")
@@ -257,7 +257,8 @@ def build_frontmatter(
 def main():
     try:
         input_data = json.load(sys.stdin)
-    except (json.JSONDecodeError, EOFError):
+    except (json.JSONDecodeError, EOFError) as e:
+        print(f"save-session: invalid stdin JSON: {e}", file=sys.stderr)
         sys.exit(0)
 
     transcript_path = input_data.get("transcript_path", "")
@@ -266,10 +267,16 @@ def main():
     trigger = input_data.get("trigger") or input_data.get("reason") or "unknown"
 
     if not transcript_path or not os.path.isfile(transcript_path):
+        print(f"save-session: no transcript at {transcript_path!r}", file=sys.stderr)
         sys.exit(0)
 
     # Parse rounds first — skip empty sessions
-    rounds = parse_rounds(transcript_path)
+    try:
+        rounds = parse_rounds(transcript_path)
+    except OSError as e:
+        print(f"save-session: failed to read transcript: {e}", file=sys.stderr)
+        sys.exit(0)
+
     if not rounds:
         sys.exit(0)
 
@@ -277,8 +284,9 @@ def main():
     os.chmod(SESSIONS_DIR, 0o700)
 
     # Sanitize inputs used in filenames to prevent path traversal
-    session_prefix = "".join(c for c in session_id[:8] if c.isalnum())
+    session_prefix = "".join(c for c in session_id if c.isalnum())
     safe_trigger = "".join(c for c in trigger if c.isalnum() or c in ("-", "_"))
+    safe_trigger = safe_trigger or "unknown"
 
     # Dedup: skip if a transcript for this session was saved in the last 60 seconds
     now = datetime.now()
