@@ -4,7 +4,7 @@ description: Install the optional statusline wrapper for enriched session metada
 
 ## Setup Enriched Session Metadata
 
-The `c-save` plugin automatically saves readable session transcripts to `~/.claude/sessions/` on every compact and session end. **No setup is required for basic functionality.**
+The `save` plugin automatically saves readable session transcripts to `~/.claude/sessions/` on every compact and session end. **No setup is required for basic functionality.**
 
 ### Optional: Enriched Metadata
 
