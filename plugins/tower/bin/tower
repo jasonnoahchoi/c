@@ -37,6 +37,8 @@ DIM = "\033[2m"
 BOLD = "\033[1m"
 CYAN = "\033[36m"
 GREEN = "\033[32m"
+RED = "\033[31m"
+MAGENTA = "\033[35m"
 YELLOW = "\033[33m"
 RESET = "\033[0m"
 RULE = f"{DIM}{'─' * 72}{RESET}"
@@ -91,6 +93,112 @@ def list_sessions(count: int = 10):
             pass
         sid = p.stem[:8]
         print(f"  {i+1:2d}) {sid}...  {mtime}  {size_kb:>4d}KB  {DIM}{preview}{RESET}")
+
+
+def render_diff(old: str, new: str, max_lines: int = 15) -> str:
+    """Render a simple diff between old and new strings."""
+    old_lines = old.splitlines()
+    new_lines = new.splitlines()
+    result = []
+    # Show removed lines
+    for line in old_lines[:max_lines]:
+        result.append(f"  {RED}- {line}{RESET}")
+    if len(old_lines) > max_lines:
+        result.append(f"  {DIM}  ... ({len(old_lines) - max_lines} more lines){RESET}")
+    # Show added lines
+    for line in new_lines[:max_lines]:
+        result.append(f"  {GREEN}+ {line}{RESET}")
+    if len(new_lines) > max_lines:
+        result.append(f"  {DIM}  ... ({len(new_lines) - max_lines} more lines){RESET}")
+    return "\n".join(result)
+
+
+def render_file_preview(content: str, max_lines: int = 10) -> str:
+    """Render a preview of file content."""
+    lines = content.splitlines()
+    result = []
+    for line in lines[:max_lines]:
+        result.append(f"  {DIM}  {line}{RESET}")
+    if len(lines) > max_lines:
+        result.append(f"  {DIM}  ... ({len(lines) - max_lines} more lines){RESET}")
+    return "\n".join(result)
+
+
+def render_tool_use(block: dict) -> str:
+    """Render a tool_use block with rich detail."""
+    name = block.get("name", "")
+    inp = block.get("input", {})
+    lines = []
+
+    if name == "Edit" or name == "MultiEdit":
+        fp = inp.get("file_path", "")
+        lines.append(f"{MAGENTA}> Edit{RESET} {DIM}{fp}{RESET}")
+        old = inp.get("old_string", "")
+        new = inp.get("new_string", "")
+        if old or new:
+            lines.append(render_diff(old, new))
+
+    elif name == "Write":
+        fp = inp.get("file_path", "")
+        content = inp.get("content", "")
+        line_count = len(content.splitlines()) if content else 0
+        lines.append(f"{MAGENTA}> Write{RESET} {DIM}{fp}{RESET} {DIM}({line_count} lines){RESET}")
+        if content:
+            lines.append(render_file_preview(content))
+
+    elif name == "Read":
+        fp = inp.get("file_path", "")
+        offset = inp.get("offset", "")
+        limit = inp.get("limit", "")
+        range_info = ""
+        if offset or limit:
+            range_info = f" {DIM}(lines {offset or 1}-{(offset or 0) + (limit or 2000)}){RESET}"
+        lines.append(f"{MAGENTA}> Read{RESET} {DIM}{fp}{RESET}{range_info}")
+
+    elif name == "Bash":
+        cmd = inp.get("command", "")
+        lines.append(f"{MAGENTA}> Bash{RESET}")
+        if cmd:
+            for cmd_line in cmd.splitlines()[:5]:
+                lines.append(f"  {DIM}$ {cmd_line}{RESET}")
+            if len(cmd.splitlines()) > 5:
+                lines.append(f"  {DIM}  ... ({len(cmd.splitlines()) - 5} more lines){RESET}")
+
+    elif name == "Grep":
+        pattern = inp.get("pattern", "")
+        path = inp.get("path", "")
+        glob_filter = inp.get("glob", "")
+        detail = f" {DIM}in {path}{RESET}" if path else ""
+        detail += f" {DIM}({glob_filter}){RESET}" if glob_filter else ""
+        lines.append(f"{MAGENTA}> Grep{RESET} {DIM}`{pattern}`{RESET}{detail}")
+
+    elif name == "Glob":
+        pattern = inp.get("pattern", "")
+        path = inp.get("path", "")
+        detail = f" {DIM}in {path}{RESET}" if path else ""
+        lines.append(f"{MAGENTA}> Glob{RESET} {DIM}`{pattern}`{RESET}{detail}")
+
+    elif name == "Agent":
+        desc = inp.get("description", "")
+        agent_type = inp.get("subagent_type", "")
+        bg = " (background)" if inp.get("run_in_background") else ""
+        type_info = f" [{agent_type}]" if agent_type else ""
+        lines.append(f"{MAGENTA}> Agent{RESET}{type_info} {desc}{bg}")
+
+    elif name == "Skill":
+        skill = inp.get("skill", "")
+        args = inp.get("args", "")
+        lines.append(f"{MAGENTA}> Skill{RESET} /{skill}" + (f" {DIM}{args}{RESET}" if args else ""))
+
+    else:
+        # Generic tool
+        lines.append(f"{MAGENTA}> {name}{RESET}")
+        # Show first few input keys as hints
+        for k, v in list(inp.items())[:3]:
+            v_str = str(v)[:80]
+            lines.append(f"  {DIM}{k}: {v_str}{RESET}")
+
+    return "\n".join(lines)
 
 
 def render_entry(entry: dict) -> str | None:
@@ -151,22 +259,7 @@ def render_entry(entry: dict) -> str | None:
                     if text.strip():
                         parts.append(text)
                 elif block.get("type") == "tool_use":
-                    name = block.get("name", "")
-                    inp = block.get("input", {})
-                    detail = ""
-                    if name == "Read":
-                        detail = f" - `{inp.get('file_path', '')}`"
-                    elif name == "Grep":
-                        detail = f" - `{inp.get('pattern', '')}`"
-                    elif name == "Bash":
-                        detail = f" - `{inp.get('command', '')[:60]}`"
-                    elif name == "Agent":
-                        detail = f" - {inp.get('description', '')}"
-                    elif name == "Write":
-                        detail = f" - `{inp.get('file_path', '')}`"
-                    elif name == "Edit":
-                        detail = f" - `{inp.get('file_path', '')}`"
-                    parts.append(f"{DIM}> Tool: `{name}`{detail}{RESET}")
+                    parts.append(render_tool_use(block))
         if parts:
             header = f"\n{BOLD}{GREEN}## Assistant{RESET}\n"
             return header + "\n".join(parts) + "\n"
