@@ -81,7 +81,7 @@ def list_sessions(count: int = 10):
         mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime))
         preview = ""
         try:
-            with open(p) as f:
+            with open(p, encoding="utf-8") as f:
                 for line in f:
                     entry = json.loads(line.strip())
                     if entry.get("type") == "user":
@@ -274,9 +274,9 @@ def tail_transcript(path: str):
     print(f"{DIM}Session: {Path(path).stem}{RESET}")
     print(f"{RULE}\n")
 
-    # First pass: render existing content
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
+            # First pass: render existing content
             for line in f:
                 line = line.strip()
                 if not line:
@@ -288,28 +288,26 @@ def tail_transcript(path: str):
                         print(output, flush=True)
                 except json.JSONDecodeError:
                     continue
+
+            print(f"\n{DIM}--- Live tail (waiting for new messages) ---{RESET}\n", flush=True)
+
+            # Tail: keep same file handle to avoid missing entries
+            while True:
+                line = f.readline()
+                if line:
+                    line = line.strip()
+                    if line:
+                        try:
+                            entry = json.loads(line)
+                            output = render_entry(entry)
+                            if output:
+                                print(output, flush=True)
+                        except json.JSONDecodeError:
+                            pass
+                else:
+                    time.sleep(0.3)
     except FileNotFoundError:
         print("Waiting for transcript to be created...")
-
-    print(f"\n{DIM}--- Live tail (waiting for new messages) ---{RESET}\n", flush=True)
-
-    # Tail: watch for new lines
-    with open(path) as f:
-        f.seek(0, 2)
-        while True:
-            line = f.readline()
-            if line:
-                line = line.strip()
-                if line:
-                    try:
-                        entry = json.loads(line)
-                        output = render_entry(entry)
-                        if output:
-                            print(output, flush=True)
-                    except json.JSONDecodeError:
-                        pass
-            else:
-                time.sleep(0.3)
 
 
 def main():
