@@ -1,0 +1,81 @@
+/* Tower TUI - Textual CSS */
+
+SessionHeader {
+    dock: top;
+    height: 1;
+    background: $primary-background;
+    color: $text;
+    text-style: bold;
+    padding: 0 1;
+}
+
+#message-list {
+    height: 1fr;
+    padding: 0 1;
+}
+
+#search-input {
+    dock: bottom;
+    margin: 0 0 1 0;
+}
+
+Footer {
+    dock: bottom;
+}
+
+/* Message types */
+
+.message-user {
+    margin-bottom: 1;
+}
+
+.message-assistant {
+    margin-bottom: 1;
+}
+
+.message-tool_result {
+    margin-bottom: 1;
+}
+
+/* Headers */
+
+.header-user {
+    color: cyan;
+    text-style: bold;
+}
+
+.header-assistant {
+    color: green;
+    text-style: bold;
+}
+
+.header-tools {
+    color: $text-muted;
+    text-style: dim;
+}
+
+/* Content */
+
+.content-user {
+    margin-left: 2;
+}
+
+.content-assistant {
+    margin-left: 2;
+}
+
+/* Tool widgets */
+
+ToolCallWidget {
+    margin-left: 2;
+}
+
+.tool-detail {
+    margin-left: 4;
+    color: $text-muted;
+}
+
+.tool-result {
+    color: $text-muted;
+    margin-left: 2;
+}
