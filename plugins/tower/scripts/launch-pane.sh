@@ -10,6 +10,23 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOWER_BIN="$HOME/bin/tower"
 SESSION_ARG="${1:-}"
+
+# If no session ID provided, detect the active session for this project
+if [ -z "$SESSION_ARG" ]; then
+    # Claude Code stores transcripts at ~/.claude/projects/{path-with-dashes}/
+    # Use git root so this works from subdirectories too
+    ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD")
+    PROJECT_KEY=$(printf '%s' "$ROOT_DIR" | sed 's|/|-|g')
+    PROJECT_DIR="$HOME/.claude/projects/${PROJECT_KEY}"
+    if [ -d "$PROJECT_DIR" ]; then
+        # Most recently modified .jsonl is the active session
+        LATEST=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
+        if [ -n "$LATEST" ]; then
+            SESSION_ARG=$(basename "$LATEST" .jsonl)
+        fi
+    fi
+fi
+
 TOWER_CMD="$TOWER_BIN"
 if [ -n "$SESSION_ARG" ]; then
     if [[ ! "$SESSION_ARG" =~ ^[a-zA-Z0-9_-]+$ ]]; then
