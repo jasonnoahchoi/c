@@ -54,8 +54,8 @@ The setup script installs `tower` to `~/bin/` and auto-configures split-pane sho
 **Usage from Claude Code (recommended):**
 
 ```
-/c:tower            # Auto-detect terminal, open split pane, start mirroring
-/c:tower:setup      # First-time install: binary, alias, terminal shortcuts
+/tower:watch        # Auto-detect terminal, open split pane, start mirroring
+/tower:setup        # First-time install: binary, alias, terminal shortcuts
 ```
 
 `/c:tower` detects your terminal and programmatically opens a split pane with tower running. No manual window management needed.
@@ -168,7 +168,7 @@ c/
 │   └── tower/               # tower: live session mirror
 │       ├── .claude-plugin/plugin.json
 │       ├── bin/tower
-│       ├── skills/tower/SKILL.md
+│       ├── skills/watch/SKILL.md
 │       ├── commands/setup.md
 │       └── scripts/
 │           ├── setup.sh
