@@ -1,0 +1,259 @@
+#!/usr/bin/env python3
+"""
+Tower - Live conversation mirror for AI coding sessions.
+
+Tails JSONL transcripts from Claude Code and renders readable output in real-time.
+Run in a split terminal pane to always see your full conversation, even after
+/clear or /compact wipes your scrollback.
+
+Usage:
+    tower                     # Watch most recent session
+    tower 1                   # Watch most recent from --list
+    tower <session-id>        # Watch by partial session ID
+    tower --list              # List recent sessions
+    tower --list 20           # List last 20 sessions
+
+Alias: tw (add to .zshrc: alias tw='tower')
+"""
+
+import json
+import os
+import sys
+import time
+import signal
+from pathlib import Path
+
+PROJECTS_DIR = Path.home() / ".claude" / "projects"
+SKIP_TYPES = {"progress", "file-history-snapshot"}
+NOISE_PREFIXES = (
+    "Base directory for this skill:",
+    "<task-notification>",
+    "<command-message>",
+    "<system-reminder>",
+)
+
+# ANSI colors
+DIM = "\033[2m"
+BOLD = "\033[1m"
+CYAN = "\033[36m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+RESET = "\033[0m"
+RULE = f"{DIM}{'─' * 72}{RESET}"
+
+
+def is_noise(text: str) -> bool:
+    stripped = text.strip()
+    return any(stripped.startswith(p) for p in NOISE_PREFIXES)
+
+
+def find_latest_transcript() -> str | None:
+    """Find the most recently modified JSONL transcript."""
+    all_jsonl = list(PROJECTS_DIR.rglob("*.jsonl"))
+    if not all_jsonl:
+        return None
+    return str(max(all_jsonl, key=lambda p: p.stat().st_mtime))
+
+
+def find_transcript_by_id(session_id: str) -> str | None:
+    """Find a transcript by partial session ID match."""
+    for p in PROJECTS_DIR.rglob("*.jsonl"):
+        if session_id in p.stem:
+            return str(p)
+    return None
+
+
+def get_sorted_transcripts() -> list[Path]:
+    """Get all transcripts sorted by mtime descending."""
+    all_jsonl = list(PROJECTS_DIR.rglob("*.jsonl"))
+    all_jsonl.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return all_jsonl
+
+
+def list_sessions(count: int = 10):
+    """List recent sessions with previews."""
+    all_jsonl = get_sorted_transcripts()
+
+    for i, p in enumerate(all_jsonl[:count]):
+        size_kb = p.stat().st_size // 1024
+        mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime))
+        preview = ""
+        try:
+            with open(p) as f:
+                for line in f:
+                    entry = json.loads(line.strip())
+                    if entry.get("type") == "user":
+                        content = entry.get("message", {}).get("content", "")
+                        if isinstance(content, str) and content.strip():
+                            preview = content[:60]
+                            break
+        except Exception:
+            pass
+        sid = p.stem[:8]
+        print(f"  {i+1:2d}) {sid}...  {mtime}  {size_kb:>4d}KB  {DIM}{preview}{RESET}")
+
+
+def render_entry(entry: dict) -> str | None:
+    """Render a single JSONL entry as readable text."""
+    entry_type = entry.get("type", "")
+
+    if entry_type in SKIP_TYPES:
+        return None
+    if entry.get("isCompactSummary"):
+        return None
+
+    message = entry.get("message", {})
+    role = message.get("role", "")
+    content = message.get("content", "")
+
+    if entry_type == "user" or role == "user":
+        if isinstance(content, str):
+            if not content.strip() or is_noise(content):
+                return None
+            return f"\n{RULE}\n{BOLD}{CYAN}## User{RESET}\n\n{content}\n"
+        elif isinstance(content, list):
+            # Separate real user text from tool results
+            user_texts = []
+            tool_results = []
+            for block in content:
+                if block.get("type") == "text":
+                    text = block.get("text", "")
+                    if is_noise(text):
+                        return None
+                    if text.strip():
+                        user_texts.append(text)
+                elif block.get("type") == "tool_result":
+                    is_err = block.get("is_error", False)
+                    tc = block.get("content", "")
+                    if isinstance(tc, list):
+                        tc = " ".join(b.get("text", "")[:100] for b in tc if b.get("type") == "text")
+                    elif isinstance(tc, str):
+                        tc = tc[:100]
+                    label = f"{YELLOW}ERROR{RESET}" if is_err else f"{DIM}ok{RESET}"
+                    tool_results.append(f"{DIM}  ({label}) {tc}{RESET}")
+            # Real user input gets ## User header
+            if user_texts:
+                return f"\n{RULE}\n{BOLD}{CYAN}## User{RESET}\n\n" + "\n".join(user_texts) + "\n"
+            # Tool results get a dim ## Tool Results header (no rule separator)
+            if tool_results:
+                return f"\n{DIM}## Tool Results{RESET}\n" + "\n".join(tool_results) + "\n"
+        return None
+
+    elif entry_type == "assistant" or role == "assistant":
+        parts = []
+        if isinstance(content, str):
+            if content.strip():
+                parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if block.get("type") == "text":
+                    text = block.get("text", "")
+                    if text.strip():
+                        parts.append(text)
+                elif block.get("type") == "tool_use":
+                    name = block.get("name", "")
+                    inp = block.get("input", {})
+                    detail = ""
+                    if name == "Read":
+                        detail = f" - `{inp.get('file_path', '')}`"
+                    elif name == "Grep":
+                        detail = f" - `{inp.get('pattern', '')}`"
+                    elif name == "Bash":
+                        detail = f" - `{inp.get('command', '')[:60]}`"
+                    elif name == "Agent":
+                        detail = f" - {inp.get('description', '')}"
+                    elif name == "Write":
+                        detail = f" - `{inp.get('file_path', '')}`"
+                    elif name == "Edit":
+                        detail = f" - `{inp.get('file_path', '')}`"
+                    parts.append(f"{DIM}> Tool: `{name}`{detail}{RESET}")
+        if parts:
+            header = f"\n{BOLD}{GREEN}## Assistant{RESET}\n"
+            return header + "\n".join(parts) + "\n"
+        return None
+
+    return None
+
+
+def tail_transcript(path: str):
+    """Tail a JSONL transcript file and render new entries."""
+    print(f"{BOLD}Watching:{RESET} {path}")
+    print(f"{DIM}Session: {Path(path).stem}{RESET}")
+    print(f"{RULE}\n")
+
+    # First pass: render existing content
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    output = render_entry(entry)
+                    if output:
+                        print(output, flush=True)
+                except json.JSONDecodeError:
+                    continue
+    except FileNotFoundError:
+        print("Waiting for transcript to be created...")
+
+    print(f"\n{DIM}--- Live tail (waiting for new messages) ---{RESET}\n", flush=True)
+
+    # Tail: watch for new lines
+    with open(path) as f:
+        f.seek(0, 2)
+        while True:
+            line = f.readline()
+            if line:
+                line = line.strip()
+                if line:
+                    try:
+                        entry = json.loads(line)
+                        output = render_entry(entry)
+                        if output:
+                            print(output, flush=True)
+                    except json.JSONDecodeError:
+                        pass
+            else:
+                time.sleep(0.3)
+
+
+def main():
+    signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
+
+    args = sys.argv[1:]
+
+    if not args:
+        path = find_latest_transcript()
+        if not path:
+            print("No transcripts found")
+            sys.exit(1)
+        tail_transcript(path)
+    elif args[0] == "--list":
+        list_sessions(int(args[1]) if len(args) > 1 else 10)
+    elif args[0] in ("--help", "-h"):
+        print(__doc__)
+    else:
+        query = args[0]
+        if query.isdigit():
+            idx = int(query) - 1
+            transcripts = get_sorted_transcripts()
+            if 0 <= idx < len(transcripts):
+                tail_transcript(str(transcripts[idx]))
+            else:
+                print(f"No session at index {query}. Use --list to see available.")
+                sys.exit(1)
+        else:
+            path = find_transcript_by_id(query)
+            if not path:
+                if os.path.isfile(query):
+                    path = query
+                else:
+                    print(f"No transcript found for: {query}")
+                    sys.exit(1)
+            tail_transcript(path)
+
+
+if __name__ == "__main__":
+    main()
