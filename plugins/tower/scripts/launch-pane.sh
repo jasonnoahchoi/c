@@ -14,9 +14,10 @@ SESSION_ARG="${1:-}"
 # If no session ID provided, detect the active session for this project
 if [ -z "$SESSION_ARG" ]; then
     # Claude Code stores transcripts at ~/.claude/projects/{path-with-dashes}/
-    # where the path is CWD with / replaced by -
-    PROJECT_KEY=$(echo "$PWD" | sed 's|^/||; s|/|-|g')
-    PROJECT_DIR="$HOME/.claude/projects/-${PROJECT_KEY}"
+    # Use git root so this works from subdirectories too
+    ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD")
+    PROJECT_KEY=$(printf '%s' "$ROOT_DIR" | sed 's|/|-|g')
+    PROJECT_DIR="$HOME/.claude/projects/${PROJECT_KEY}"
     if [ -d "$PROJECT_DIR" ]; then
         # Most recently modified .jsonl is the active session
         LATEST=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
