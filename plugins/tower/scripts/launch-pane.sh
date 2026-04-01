@@ -48,11 +48,21 @@ case "$TERMINAL" in
         echo "Launched tower in iTerm2 right split"
         ;;
     ghostty)
-        # Ghostty doesn't support programmatic splits yet.
-        # Use the keybind (Cmd+Shift+T) then type the command.
-        echo "MANUAL_SPLIT"
-        echo "Ghostty doesn't support programmatic pane splits yet."
-        echo "Press Cmd+Shift+T to split, then type: tw${SESSION_ARG:+ $SESSION_ARG}"
+        # Ghostty keybinds can't take a command arg, but AppleScript can
+        # split and type the command into the new pane.
+        osascript -e "
+            tell application \"Ghostty\"
+                set currentTerm to focused terminal of selected tab of front window
+                set newTerm to split currentTerm direction right
+                input text \"$TOWER_CMD\n\" to newTerm
+            end tell
+        " 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo "Launched tower in Ghostty right split"
+        else
+            echo "MANUAL_SPLIT"
+            echo "AppleScript failed. Press Cmd+D to split, then type: tw${SESSION_ARG:+ $SESSION_ARG}"
+        fi
         ;;
     wezterm)
         # WezTerm CLI can split panes

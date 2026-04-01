@@ -242,9 +242,9 @@ def render_entry(entry: dict) -> str | None:
             # Real user input gets ## User header
             if user_texts:
                 return f"\n{RULE}\n{BOLD}{CYAN}## User{RESET}\n\n" + "\n".join(user_texts) + "\n"
-            # Tool results get a dim ## Tool Results header (no rule separator)
+            # Tool results get a dim ## Tools header (no rule separator)
             if tool_results:
-                return f"\n{DIM}## Tool Results{RESET}\n" + "\n".join(tool_results) + "\n"
+                return f"\n{DIM}## Tools{RESET}\n" + "\n".join(tool_results) + "\n"
         return None
 
     elif entry_type == "assistant" or role == "assistant":

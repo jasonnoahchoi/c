@@ -51,7 +51,16 @@ The setup script installs `tower` to `~/bin/` and auto-configures split-pane sho
 | **Zellij** | Prints the split command | `zellij action new-pane -d right -- tower` |
 | **Windows Terminal** | Prints the settings.json snippet | `Ctrl+Shift+T` |
 
-**Usage:**
+**Usage from Claude Code (recommended):**
+
+```
+/c:tower            # Auto-detect terminal, open split pane, start mirroring
+/c:tower:setup      # First-time install: binary, alias, terminal shortcuts
+```
+
+`/c:tower` detects your terminal and programmatically opens a split pane with tower running. No manual window management needed.
+
+**Usage from the terminal directly:**
 
 ```bash
 tower              # Watch most recent session (auto-detect)
@@ -73,8 +82,8 @@ tw                 # Alias
 |                           |   fix the auth bug        |
 |   [editing files...]      |                           |
 |                           |   ## Assistant             |
-|   Done! Fixed the null    |   > Tool: Grep - ...      |
-|   check in auth.ts        |   > Tool: Edit - ...      |
+|   Done! Fixed the null    |   > Grep `auth` in src/   |
+|   check in auth.ts        |   > Edit src/auth.ts      |
 |                           |   Done! Fixed the null    |
 |   > /clear                |   check in auth.ts        |
 |                           |                           |
@@ -159,8 +168,12 @@ c/
 │   └── tower/               # tower: live session mirror
 │       ├── .claude-plugin/plugin.json
 │       ├── bin/tower
-│       ├── scripts/setup.sh
-│       └── skill/SKILL.md
+│       ├── skills/tower/SKILL.md
+│       ├── commands/setup.md
+│       └── scripts/
+│           ├── setup.sh
+│           ├── detect-terminal.sh
+│           └── launch-pane.sh
 └── README.md
 ```
 
