@@ -19,8 +19,30 @@ echo ""
 
 mkdir -p "$BIN_DIR"
 cp "$SCRIPT_DIR/../bin/tower" "$BIN_DIR/tower"
+cp "$SCRIPT_DIR/../bin/tower_parser.py" "$BIN_DIR/tower_parser.py"
+cp "$SCRIPT_DIR/../bin/tower_tui.py" "$BIN_DIR/tower_tui.py"
+cp "$SCRIPT_DIR/../bin/tower_tui.css" "$BIN_DIR/tower_tui.css"
 chmod +x "$BIN_DIR/tower"
 echo "[ok] Installed tower to $BIN_DIR/tower"
+echo "[ok] Installed tower_parser.py, tower_tui.py, tower_tui.css"
+
+# Optional: TUI mode dependency
+if python3 -c "import textual" 2>/dev/null; then
+    echo "[ok] textual already installed - TUI mode available (tower --tui)"
+else
+    echo ""
+    echo "Optional: Install TUI mode for interactive features"
+    echo "  pip install textual"
+    echo ""
+    if [ -t 0 ]; then
+        printf "Install textual now? [y/N] "
+        read -r REPLY
+        if [ "$REPLY" = "y" ] || [ "$REPLY" = "Y" ]; then
+            pip3 install --break-system-packages textual 2>/dev/null || pip3 install textual
+            echo "[ok] Textual installed - use: tower --tui"
+        fi
+    fi
+fi
 
 # Ensure ~/bin is in PATH
 if ! grep -q '\$HOME/bin' "$SHELL_RC" 2>/dev/null && ! grep -q '~/bin' "$SHELL_RC" 2>/dev/null; then
