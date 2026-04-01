@@ -7,7 +7,9 @@ Run in a split terminal pane to always see your full conversation, even after
 /clear or /compact wipes your scrollback.
 
 Usage:
-    tower                     # Watch most recent session
+    tower                     # Watch most recent session (basic mode)
+    tower --tui               # Watch most recent session (interactive TUI)
+    tower -i                  # Alias for --tui
     tower 1                   # Watch most recent from --list
     tower <session-id>        # Watch by partial session ID
     tower --list              # List recent sessions
@@ -23,249 +25,13 @@ import time
 import signal
 from pathlib import Path
 
-PROJECTS_DIR = Path.home() / ".claude" / "projects"
-SKIP_TYPES = {"progress", "file-history-snapshot"}
-NOISE_PREFIXES = (
-    "Base directory for this skill:",
-    "<task-notification>",
-    "<command-message>",
-    "<system-reminder>",
+# Import shared parser (same directory)
+sys.path.insert(0, str(Path(__file__).parent))
+from tower_parser import (
+    parse_entry, render_entry_basic, find_latest_transcript,
+    find_transcript_by_id, get_sorted_transcripts, list_sessions,
+    BOLD, DIM, RESET, RULE,
 )
-
-# ANSI colors
-DIM = "\033[2m"
-BOLD = "\033[1m"
-CYAN = "\033[36m"
-GREEN = "\033[32m"
-RED = "\033[31m"
-MAGENTA = "\033[35m"
-YELLOW = "\033[33m"
-RESET = "\033[0m"
-RULE = f"{DIM}{'─' * 72}{RESET}"
-
-
-def is_noise(text: str) -> bool:
-    stripped = text.strip()
-    return any(stripped.startswith(p) for p in NOISE_PREFIXES)
-
-
-def find_latest_transcript() -> str | None:
-    """Find the most recently modified JSONL transcript."""
-    all_jsonl = list(PROJECTS_DIR.rglob("*.jsonl"))
-    if not all_jsonl:
-        return None
-    return str(max(all_jsonl, key=lambda p: p.stat().st_mtime))
-
-
-def find_transcript_by_id(session_id: str) -> str | None:
-    """Find a transcript by partial session ID match."""
-    for p in PROJECTS_DIR.rglob("*.jsonl"):
-        if session_id in p.stem:
-            return str(p)
-    return None
-
-
-def get_sorted_transcripts() -> list[Path]:
-    """Get all transcripts sorted by mtime descending."""
-    all_jsonl = list(PROJECTS_DIR.rglob("*.jsonl"))
-    all_jsonl.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    return all_jsonl
-
-
-def list_sessions(count: int = 10):
-    """List recent sessions with previews."""
-    all_jsonl = get_sorted_transcripts()
-
-    for i, p in enumerate(all_jsonl[:count]):
-        size_kb = p.stat().st_size // 1024
-        mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime))
-        preview = ""
-        try:
-            with open(p, encoding="utf-8") as f:
-                for line in f:
-                    entry = json.loads(line.strip())
-                    if entry.get("type") == "user":
-                        content = entry.get("message", {}).get("content", "")
-                        if isinstance(content, str) and content.strip():
-                            preview = content[:60]
-                            break
-        except Exception:
-            pass
-        sid = p.stem[:8]
-        print(f"  {i+1:2d}) {sid}...  {mtime}  {size_kb:>4d}KB  {DIM}{preview}{RESET}")
-
-
-def render_diff(old: str, new: str, max_lines: int = 15) -> str:
-    """Render a simple diff between old and new strings."""
-    old_lines = old.splitlines()
-    new_lines = new.splitlines()
-    result = []
-    # Show removed lines
-    for line in old_lines[:max_lines]:
-        result.append(f"  {RED}- {line}{RESET}")
-    if len(old_lines) > max_lines:
-        result.append(f"  {DIM}  ... ({len(old_lines) - max_lines} more lines){RESET}")
-    # Show added lines
-    for line in new_lines[:max_lines]:
-        result.append(f"  {GREEN}+ {line}{RESET}")
-    if len(new_lines) > max_lines:
-        result.append(f"  {DIM}  ... ({len(new_lines) - max_lines} more lines){RESET}")
-    return "\n".join(result)
-
-
-def render_file_preview(content: str, max_lines: int = 10) -> str:
-    """Render a preview of file content."""
-    lines = content.splitlines()
-    result = []
-    for line in lines[:max_lines]:
-        result.append(f"  {DIM}  {line}{RESET}")
-    if len(lines) > max_lines:
-        result.append(f"  {DIM}  ... ({len(lines) - max_lines} more lines){RESET}")
-    return "\n".join(result)
-
-
-def render_tool_use(block: dict) -> str:
-    """Render a tool_use block with rich detail."""
-    name = block.get("name", "")
-    inp = block.get("input", {})
-    lines = []
-
-    if name == "Edit" or name == "MultiEdit":
-        fp = inp.get("file_path", "")
-        lines.append(f"{MAGENTA}> Edit{RESET} {DIM}{fp}{RESET}")
-        old = inp.get("old_string", "")
-        new = inp.get("new_string", "")
-        if old or new:
-            lines.append(render_diff(old, new))
-
-    elif name == "Write":
-        fp = inp.get("file_path", "")
-        content = inp.get("content", "")
-        line_count = len(content.splitlines()) if content else 0
-        lines.append(f"{MAGENTA}> Write{RESET} {DIM}{fp}{RESET} {DIM}({line_count} lines){RESET}")
-        if content:
-            lines.append(render_file_preview(content))
-
-    elif name == "Read":
-        fp = inp.get("file_path", "")
-        offset = inp.get("offset", "")
-        limit = inp.get("limit", "")
-        range_info = ""
-        if offset or limit:
-            range_info = f" {DIM}(lines {offset or 1}-{(offset or 0) + (limit or 2000)}){RESET}"
-        lines.append(f"{MAGENTA}> Read{RESET} {DIM}{fp}{RESET}{range_info}")
-
-    elif name == "Bash":
-        cmd = inp.get("command", "")
-        lines.append(f"{MAGENTA}> Bash{RESET}")
-        if cmd:
-            for cmd_line in cmd.splitlines()[:5]:
-                lines.append(f"  {DIM}$ {cmd_line}{RESET}")
-            if len(cmd.splitlines()) > 5:
-                lines.append(f"  {DIM}  ... ({len(cmd.splitlines()) - 5} more lines){RESET}")
-
-    elif name == "Grep":
-        pattern = inp.get("pattern", "")
-        path = inp.get("path", "")
-        glob_filter = inp.get("glob", "")
-        detail = f" {DIM}in {path}{RESET}" if path else ""
-        detail += f" {DIM}({glob_filter}){RESET}" if glob_filter else ""
-        lines.append(f"{MAGENTA}> Grep{RESET} {DIM}`{pattern}`{RESET}{detail}")
-
-    elif name == "Glob":
-        pattern = inp.get("pattern", "")
-        path = inp.get("path", "")
-        detail = f" {DIM}in {path}{RESET}" if path else ""
-        lines.append(f"{MAGENTA}> Glob{RESET} {DIM}`{pattern}`{RESET}{detail}")
-
-    elif name == "Agent":
-        desc = inp.get("description", "")
-        agent_type = inp.get("subagent_type", "")
-        bg = " (background)" if inp.get("run_in_background") else ""
-        type_info = f" [{agent_type}]" if agent_type else ""
-        lines.append(f"{MAGENTA}> Agent{RESET}{type_info} {desc}{bg}")
-
-    elif name == "Skill":
-        skill = inp.get("skill", "")
-        args = inp.get("args", "")
-        lines.append(f"{MAGENTA}> Skill{RESET} /{skill}" + (f" {DIM}{args}{RESET}" if args else ""))
-
-    else:
-        # Generic tool
-        lines.append(f"{MAGENTA}> {name}{RESET}")
-        # Show first few input keys as hints
-        for k, v in list(inp.items())[:3]:
-            v_str = str(v)[:80]
-            lines.append(f"  {DIM}{k}: {v_str}{RESET}")
-
-    return "\n".join(lines)
-
-
-def render_entry(entry: dict) -> str | None:
-    """Render a single JSONL entry as readable text."""
-    entry_type = entry.get("type", "")
-
-    if entry_type in SKIP_TYPES:
-        return None
-    if entry.get("isCompactSummary"):
-        return None
-
-    message = entry.get("message", {})
-    role = message.get("role", "")
-    content = message.get("content", "")
-
-    if entry_type == "user" or role == "user":
-        if isinstance(content, str):
-            if not content.strip() or is_noise(content):
-                return None
-            return f"\n{RULE}\n{BOLD}{CYAN}## User{RESET}\n\n{content}\n"
-        elif isinstance(content, list):
-            # Separate real user text from tool results
-            user_texts = []
-            tool_results = []
-            for block in content:
-                if block.get("type") == "text":
-                    text = block.get("text", "")
-                    if is_noise(text):
-                        return None
-                    if text.strip():
-                        user_texts.append(text)
-                elif block.get("type") == "tool_result":
-                    is_err = block.get("is_error", False)
-                    tc = block.get("content", "")
-                    if isinstance(tc, list):
-                        tc = " ".join(b.get("text", "")[:100] for b in tc if b.get("type") == "text")
-                    elif isinstance(tc, str):
-                        tc = tc[:100]
-                    label = f"{YELLOW}ERROR{RESET}" if is_err else f"{DIM}ok{RESET}"
-                    tool_results.append(f"{DIM}  ({label}) {tc}{RESET}")
-            # Real user input gets ## User header
-            if user_texts:
-                return f"\n{RULE}\n{BOLD}{CYAN}## User{RESET}\n\n" + "\n".join(user_texts) + "\n"
-            # Tool results get a dim ## Tools header (no rule separator)
-            if tool_results:
-                return f"\n{DIM}## Tools{RESET}\n" + "\n".join(tool_results) + "\n"
-        return None
-
-    elif entry_type == "assistant" or role == "assistant":
-        parts = []
-        if isinstance(content, str):
-            if content.strip():
-                parts.append(content)
-        elif isinstance(content, list):
-            for block in content:
-                if block.get("type") == "text":
-                    text = block.get("text", "")
-                    if text.strip():
-                        parts.append(text)
-                elif block.get("type") == "tool_use":
-                    parts.append(render_tool_use(block))
-        if parts:
-            header = f"\n{BOLD}{GREEN}## Assistant{RESET}\n"
-            return header + "\n".join(parts) + "\n"
-        return None
-
-    return None
 
 
 def tail_transcript(path: str):
@@ -276,14 +42,13 @@ def tail_transcript(path: str):
 
     try:
         with open(path, encoding="utf-8") as f:
-            # First pass: render existing content
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
                 try:
                     entry = json.loads(line)
-                    output = render_entry(entry)
+                    output = render_entry_basic(entry)
                     if output:
                         print(output, flush=True)
                 except json.JSONDecodeError:
@@ -291,7 +56,6 @@ def tail_transcript(path: str):
 
             print(f"\n{DIM}--- Live tail (waiting for new messages) ---{RESET}\n", flush=True)
 
-            # Tail: keep same file handle to avoid missing entries
             while True:
                 line = f.readline()
                 if line:
@@ -299,7 +63,7 @@ def tail_transcript(path: str):
                     if line:
                         try:
                             entry = json.loads(line)
-                            output = render_entry(entry)
+                            output = render_entry_basic(entry)
                             if output:
                                 print(output, flush=True)
                         except json.JSONDecodeError:
@@ -310,40 +74,78 @@ def tail_transcript(path: str):
         print("Waiting for transcript to be created...")
 
 
-def main():
-    signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
+def launch_tui(path: str):
+    """Launch the interactive TUI mode."""
+    try:
+        from tower_tui import TowerApp
+    except ImportError:
+        print("TUI mode requires textual. Install with:")
+        print("  pip install textual")
+        sys.exit(1)
+    app = TowerApp(path)
+    app.run()
 
-    args = sys.argv[1:]
 
+def resolve_session(args: list[str]) -> str:
+    """Resolve session args to a transcript file path."""
     if not args:
         path = find_latest_transcript()
         if not path:
             print("No transcripts found")
             sys.exit(1)
-        tail_transcript(path)
-    elif args[0] == "--list":
-        list_sessions(int(args[1]) if len(args) > 1 else 10)
-    elif args[0] in ("--help", "-h"):
-        print(__doc__)
-    else:
-        query = args[0]
-        if query.isdigit():
-            idx = int(query) - 1
-            transcripts = get_sorted_transcripts()
-            if 0 <= idx < len(transcripts):
-                tail_transcript(str(transcripts[idx]))
-            else:
-                print(f"No session at index {query}. Use --list to see available.")
-                sys.exit(1)
+        return path
+
+    query = args[0]
+    if query.isdigit():
+        idx = int(query) - 1
+        transcripts = get_sorted_transcripts()
+        if 0 <= idx < len(transcripts):
+            return str(transcripts[idx])
         else:
-            path = find_transcript_by_id(query)
-            if not path:
-                if os.path.isfile(query):
-                    path = query
-                else:
-                    print(f"No transcript found for: {query}")
-                    sys.exit(1)
-            tail_transcript(path)
+            print(f"No session at index {query}. Use --list to see available.")
+            sys.exit(1)
+    else:
+        path = find_transcript_by_id(query)
+        if not path:
+            if os.path.isfile(query):
+                return query
+            else:
+                print(f"No transcript found for: {query}")
+                sys.exit(1)
+        return path
+
+
+def main():
+    signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
+
+    args = sys.argv[1:]
+    tui_mode = False
+
+    # Extract --tui / -i flag
+    if "--tui" in args:
+        tui_mode = True
+        args.remove("--tui")
+    elif "-i" in args:
+        tui_mode = True
+        args.remove("-i")
+
+    # Handle --list (always basic mode)
+    if args and args[0] == "--list":
+        list_sessions(int(args[1]) if len(args) > 1 else 10)
+        return
+
+    # Handle --help
+    if args and args[0] in ("--help", "-h"):
+        print(__doc__)
+        return
+
+    # Resolve session path
+    path = resolve_session(args)
+
+    if tui_mode:
+        launch_tui(path)
+    else:
+        tail_transcript(path)
 
 
 if __name__ == "__main__":
