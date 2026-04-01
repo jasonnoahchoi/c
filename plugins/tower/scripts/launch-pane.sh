@@ -12,6 +12,10 @@ TOWER_BIN="$HOME/bin/tower"
 SESSION_ARG="${1:-}"
 TOWER_CMD="$TOWER_BIN"
 if [ -n "$SESSION_ARG" ]; then
+    if [[ ! "$SESSION_ARG" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        echo "Invalid session ID format"
+        exit 1
+    fi
     TOWER_CMD="$TOWER_BIN $SESSION_ARG"
 fi
 
