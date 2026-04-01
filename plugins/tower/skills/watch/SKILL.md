@@ -1,5 +1,5 @@
 ---
-name: tower
+name: watch
 description: "Launch a live conversation mirror in a split terminal pane. Use when the user can't see scrollback, lost context after /clear or /compact, or asks what was said earlier."
 argument-hint: "[session-id]"
 ---

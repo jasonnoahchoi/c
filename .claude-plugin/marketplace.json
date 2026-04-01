@@ -42,7 +42,7 @@
       "author": {
         "name": "Jason Noah Choi"
       },
-      "repository": "https://github.com/jasonnoahchoi/tower",
+      "repository": "https://github.com/jasonnoahchoi/c",
       "license": "MIT",
       "keywords": ["session", "transcript", "live", "mirror", "scrollback", "tower", "split-pane"],
       "category": "productivity"
