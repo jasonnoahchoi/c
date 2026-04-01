@@ -11,38 +11,15 @@ from pathlib import Path
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import ScrollableContainer, Vertical
-from textual.widgets import Static, Collapsible, Footer, Input, Label
+from textual.containers import ScrollableContainer
+from textual.widgets import Static, Footer, Input
 from textual.reactive import reactive
 
 from rich.text import Text as RichText
-from tower_parser import parse_entry, Message, ToolCall, ToolResult, _escape_rich
+from tower_parser import parse_entry, Message, _escape_rich
 
 
 # --- Widgets ---
-
-class ToolCallWidget(Collapsible):
-    """A collapsible tool call with summary header and expanded detail."""
-
-    def __init__(self, tool_call: ToolCall):
-        super().__init__(title=tool_call.summary, collapsed=True)
-        self.tool_call = tool_call
-
-    def compose(self) -> ComposeResult:
-        yield Static(self.tool_call.full_detail_rich, markup=True, classes="tool-detail")
-
-
-class ToolResultWidget(Static):
-    """Dim display of tool results."""
-
-    def __init__(self, results: list[ToolResult]):
-        parts = []
-        for tr in results:
-            label = "[yellow]ERROR[/yellow]" if tr.is_error else "[dim]ok[/dim]"
-            parts.append(f"  ({label}) {tr.content[:100]}")
-        super().__init__("\n".join(parts), markup=True)
-        self.add_class("tool-result")
-
 
 class MessageWidget(Static):
     """A single message rendered as rich markup."""
