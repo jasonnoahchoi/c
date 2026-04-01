@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Tower - Install script
-# Installs the tower binary and optionally configures terminal split shortcuts.
+# Usage: setup.sh [--tui] [--all]
+#   (no flag) = basic mode only (zero dependencies)
+#   --tui     = also install textual for interactive TUI mode
+#   --all     = everything (tui + terminal shortcuts)
 
 set -uo pipefail
 
@@ -11,16 +14,52 @@ if [ ! -f "$SHELL_RC" ] && [ -f "$HOME/.bashrc" ]; then
     SHELL_RC="$HOME/.bashrc"
 fi
 
+INSTALL_TUI=false
+INSTALL_SHORTCUTS=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --tui) INSTALL_TUI=true ;;
+        --all) INSTALL_TUI=true; INSTALL_SHORTCUTS=true ;;
+    esac
+done
+
 echo "Tower - Live session mirror"
 echo "==========================="
 echo ""
 
-# ── Core install ─────────────────────────────────────────────────────────
+# ── Core install (always) ───────────────────────────────────────────────
 
 mkdir -p "$BIN_DIR"
 cp "$SCRIPT_DIR/../bin/tower" "$BIN_DIR/tower"
+cp "$SCRIPT_DIR/../bin/tower_parser.py" "$BIN_DIR/tower_parser.py"
 chmod +x "$BIN_DIR/tower"
 echo "[ok] Installed tower to $BIN_DIR/tower"
+echo "[ok] Installed tower_parser.py"
+
+# ── TUI mode (--tui or --all) ──────────────────────────────────────────
+
+if [ "$INSTALL_TUI" = true ]; then
+    cp "$SCRIPT_DIR/../bin/tower_tui.py" "$BIN_DIR/tower_tui.py"
+    cp "$SCRIPT_DIR/../bin/tower_tui.css" "$BIN_DIR/tower_tui.css"
+    echo "[ok] Installed tower_tui.py, tower_tui.css"
+
+    if python3 -c "import textual" 2>/dev/null; then
+        echo "[ok] textual already installed"
+    else
+        echo "Installing textual..."
+        pip3 install --break-system-packages textual 2>/dev/null || pip3 install textual 2>/dev/null
+        if python3 -c "import textual" 2>/dev/null; then
+            echo "[ok] textual installed - use: tower --tui or /tower:play"
+        else
+            echo "[warn] Could not install textual automatically"
+            echo "       Install manually: pip install textual"
+        fi
+    fi
+else
+    echo ""
+    echo "Tip: Run with --tui to install interactive TUI mode (tower --tui)"
+fi
 
 # Ensure ~/bin is in PATH
 if ! grep -q '\$HOME/bin' "$SHELL_RC" 2>/dev/null && ! grep -q '~/bin' "$SHELL_RC" 2>/dev/null; then
@@ -38,10 +77,11 @@ else
     echo "[ok] Alias tw already exists"
 fi
 
-# ── Terminal integrations ────────────────────────────────────────────────
+# ── Terminal integrations (--all) ────────────────────────────────────────
 
+if [ "$INSTALL_SHORTCUTS" = true ]; then
 echo ""
-echo "Detecting terminals..."
+echo "Configuring terminal shortcuts..."
 
 # Ghostty
 GHOSTTY_CONFIG="$HOME/Library/Application Support/com.mitchellh.ghostty/config"
@@ -194,18 +234,24 @@ if [ -n "${LOCALAPPDATA:-}" ] && [ -f "$WIN_TERM_SETTINGS" ] 2>/dev/null; then
     fi
 fi
 
+else
+    echo ""
+    echo "Tip: Run with --all to also configure terminal split-pane shortcuts"
+fi
+
 # ── Done ─────────────────────────────────────────────────────────────────
 
 echo ""
 echo "Done! Run: source $SHELL_RC"
 echo ""
 echo "Usage:"
-echo "  tower          # Watch most recent session"
+echo "  tower          # Watch most recent session (basic streaming)"
+echo "  tower --tui    # Interactive TUI with search and navigation"
 echo "  tower --list   # List recent sessions"
 echo "  tower 1        # Watch most recent from list"
 echo "  tw             # Alias for tower"
 echo ""
-echo "Quick start:"
-echo "  1. Open a split pane in your terminal"
-echo "  2. Left pane:  claude"
-echo "  3. Right pane: tw"
+echo "Setup modes:"
+echo "  setup.sh           # Basic only (zero deps)"
+echo "  setup.sh --tui     # + interactive TUI (installs textual)"
+echo "  setup.sh --all     # + TUI + terminal shortcuts"

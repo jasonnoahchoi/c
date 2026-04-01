@@ -63,13 +63,28 @@ The setup script installs `tower` to `~/bin/` and auto-configures split-pane sho
 **Usage from the terminal directly:**
 
 ```bash
-tower              # Watch most recent session (auto-detect)
+tower              # Watch most recent session (basic streaming mode)
+tower --tui        # Interactive TUI with collapsible tool calls
+tower -i           # Alias for --tui
 tower --list       # List recent sessions with previews
 tower 1            # Watch most recent from list
 tower 3            # Third most recent
 tower 69f6ac9a     # Partial session ID match
 tw                 # Alias
 ```
+
+**TUI keybindings:**
+
+| Key | Action |
+|-----|--------|
+| `j`/`k` | Scroll down/up |
+| `g`/`G` | Jump to top/bottom |
+| `/` | Search messages |
+| `t` | Toggle tool calls |
+| `d` | Toggle diff details |
+| `Enter` | Expand/collapse tool call |
+| `Esc` | Clear search |
+| `q` | Quit |
 
 **Workflow:**
 
@@ -167,9 +182,14 @@ c/
 │   │   └── commands/setup.md
 │   └── tower/               # tower: live session mirror
 │       ├── .claude-plugin/plugin.json
-│       ├── bin/tower
+│       ├── bin/
+│       │   ├── tower              # CLI entry point
+│       │   ├── tower_parser.py    # Shared JSONL parser
+│       │   ├── tower_tui.py       # Interactive TUI (textual)
+│       │   └── tower_tui.css      # TUI styling
 │       ├── skills/watch/SKILL.md
 │       ├── commands/setup.md
+│       ├── requirements.txt
 │       └── scripts/
 │           ├── setup.sh
 │           ├── detect-terminal.sh
