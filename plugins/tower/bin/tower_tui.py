@@ -15,7 +15,8 @@ from textual.containers import ScrollableContainer, Vertical
 from textual.widgets import Static, Collapsible, Footer, Input, Label
 from textual.reactive import reactive
 
-from tower_parser import parse_entry, Message, ToolCall, ToolResult
+from rich.text import Text as RichText
+from tower_parser import parse_entry, Message, ToolCall, ToolResult, _escape_rich
 
 
 # --- Widgets ---
@@ -43,29 +44,46 @@ class ToolResultWidget(Static):
         self.add_class("tool-result")
 
 
-class MessageWidget(Vertical):
-    """A single message (user, assistant, or tool_result)."""
+class MessageWidget(Static):
+    """A single message rendered as rich markup."""
 
-    def __init__(self, message: Message):
-        super().__init__()
+    DEFAULT_CSS = "MessageWidget { height: auto; }"
+
+    def __init__(self, message: Message, **kwargs):
         self.message = message
+        super().__init__(**kwargs)
         self.add_class(f"message-{message.type}")
 
-    def compose(self) -> ComposeResult:
-        if self.message.type == "user":
-            yield Label("## User", classes="header-user")
-            yield Static(self.message.text, classes="content-user")
+    def render(self) -> RichText:
+        markup = self._render_message(self.message)
+        return RichText.from_markup(markup)
 
-        elif self.message.type == "assistant":
-            yield Label("## Assistant", classes="header-assistant")
-            if self.message.text:
-                yield Static(self.message.text, classes="content-assistant")
-            for tc in self.message.tool_calls:
-                yield ToolCallWidget(tc)
+    @staticmethod
+    def _render_message(msg: Message) -> str:
+        # Colors from Claude Code darkTheme RGB values (src/utils/theme.ts)
+        parts = []
+        if msg.type == "user":
+            parts.append("[bold rgb(122,180,232)]## You[/bold rgb(122,180,232)]")
+            if msg.text:
+                parts.append(f"  {_escape_rich(msg.text)}")
 
-        elif self.message.type == "tool_result":
-            yield Label("## Tools", classes="header-tools")
-            yield ToolResultWidget(self.message.tool_results)
+        elif msg.type == "assistant":
+            parts.append("[bold rgb(215,119,87)]## Claude[/bold rgb(215,119,87)]")
+            if msg.text:
+                parts.append(f"  {_escape_rich(msg.text)}")
+            for tc in msg.tool_calls:
+                parts.append(f"  [rgb(253,93,177)]{_escape_rich(tc.summary)}[/rgb(253,93,177)]")
+
+        elif msg.type == "tool_result":
+            parts.append("[rgb(153,153,153)]## Tools[/rgb(153,153,153)]")
+            for tr in msg.tool_results:
+                if tr.is_error:
+                    label = "[rgb(255,107,128)]ERROR[/rgb(255,107,128)]"
+                else:
+                    label = "[rgb(78,186,101)]ok[/rgb(78,186,101)]"
+                parts.append(f"  ({label}) [rgb(153,153,153)]{_escape_rich(tr.content[:100])}[/rgb(153,153,153)]")
+
+        return "\n".join(parts)
 
 
 class SessionHeader(Static):
@@ -73,8 +91,8 @@ class SessionHeader(Static):
 
     message_count = reactive(0)
 
-    def __init__(self, path: str, message_count: int = 0):
-        super().__init__()
+    def __init__(self, path: str, message_count: int = 0, **kwargs):
+        super().__init__(**kwargs)
         self.path = path
         self.session_id = Path(path).stem[:12]
         self.message_count = message_count
@@ -221,15 +239,13 @@ class TowerApp(App):
 
     def action_toggle_tools(self) -> None:
         self.show_tools = not self.show_tools
-        for widget in self.query(ToolCallWidget):
-            widget.display = self.show_tools
-        for widget in self.query(ToolResultWidget):
+        for widget in self.query(".message-tool_result"):
             widget.display = self.show_tools
 
     def action_toggle_diffs(self) -> None:
-        self.show_diffs = not self.show_diffs
-        for widget in self.query(".tool-detail"):
-            widget.display = self.show_diffs
+        # Diffs are pre-rendered in the static content now
+        # Toggle is a no-op until we re-add expandable tool calls
+        pass
 
     def action_search(self) -> None:
         search = self.query_one("#search-input", Input)
