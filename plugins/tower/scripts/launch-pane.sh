@@ -2,14 +2,24 @@
 # Launch tower in a split pane for the current terminal.
 # Detects the terminal emulator and uses the appropriate split command.
 #
-# Usage: launch-pane.sh [session-id]
+# Usage: launch-pane.sh [--tui] [session-id]
 # If no session-id, tower auto-detects the most recent session.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOWER_BIN="$HOME/bin/tower"
-SESSION_ARG="${1:-}"
+TUI_FLAG=""
+SESSION_ARG=""
+
+# Parse arguments
+for arg in "$@"; do
+    if [ "$arg" = "--tui" ] || [ "$arg" = "-i" ]; then
+        TUI_FLAG="--tui"
+    else
+        SESSION_ARG="$arg"
+    fi
+done
 
 # If no session ID provided, detect the active session for this project
 if [ -z "$SESSION_ARG" ]; then
@@ -19,7 +29,6 @@ if [ -z "$SESSION_ARG" ]; then
     PROJECT_KEY=$(printf '%s' "$ROOT_DIR" | sed 's|/|-|g')
     PROJECT_DIR="$HOME/.claude/projects/${PROJECT_KEY}"
     if [ -d "$PROJECT_DIR" ]; then
-        # Most recently modified .jsonl is the active session
         LATEST=$(ls -t "$PROJECT_DIR"/*.jsonl 2>/dev/null | head -1)
         if [ -n "$LATEST" ]; then
             SESSION_ARG=$(basename "$LATEST" .jsonl)
@@ -27,14 +36,15 @@ if [ -z "$SESSION_ARG" ]; then
     fi
 fi
 
-TOWER_CMD="$TOWER_BIN"
+# Validate session ID if provided
 if [ -n "$SESSION_ARG" ]; then
     if [[ ! "$SESSION_ARG" =~ ^[a-zA-Z0-9_-]+$ ]]; then
         echo "Invalid session ID format"
         exit 1
     fi
-    TOWER_CMD="$TOWER_BIN $SESSION_ARG"
 fi
+
+TOWER_CMD="$TOWER_BIN${TUI_FLAG:+ $TUI_FLAG}${SESSION_ARG:+ $SESSION_ARG}"
 
 # Ensure tower is installed
 if [ ! -x "$TOWER_BIN" ]; then
