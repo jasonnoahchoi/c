@@ -7,6 +7,9 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$HOME/bin"
 SHELL_RC="$HOME/.zshrc"
+if [ ! -f "$SHELL_RC" ] && [ -f "$HOME/.bashrc" ]; then
+    SHELL_RC="$HOME/.bashrc"
+fi
 
 echo "Tower - Live session mirror"
 echo "==========================="
@@ -15,7 +18,7 @@ echo ""
 # ── Core install ─────────────────────────────────────────────────────────
 
 mkdir -p "$BIN_DIR"
-cp "$SCRIPT_DIR/bin/tower" "$BIN_DIR/tower"
+cp "$SCRIPT_DIR/../bin/tower" "$BIN_DIR/tower"
 chmod +x "$BIN_DIR/tower"
 echo "[ok] Installed tower to $BIN_DIR/tower"
 
@@ -194,7 +197,7 @@ fi
 # ── Done ─────────────────────────────────────────────────────────────────
 
 echo ""
-echo "Done! Run: source ~/.zshrc"
+echo "Done! Run: source $SHELL_RC"
 echo ""
 echo "Usage:"
 echo "  tower          # Watch most recent session"
