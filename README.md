@@ -58,7 +58,7 @@ The setup script installs `tower` to `~/bin/` and auto-configures split-pane sho
 /tower:setup        # First-time install: binary, alias, terminal shortcuts
 ```
 
-`/c:tower` detects your terminal and programmatically opens a split pane with tower running. No manual window management needed.
+`/tower:watch` detects your terminal and programmatically opens a split pane with tower running. No manual window management needed.
 
 **Usage from the terminal directly:**
 
