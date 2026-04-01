@@ -1,0 +1,12 @@
+{
+  "name": "tower",
+  "version": "1.0.0",
+  "description": "Live conversation mirror - tail session transcripts in a split pane",
+  "author": {
+    "name": "Jason Noah Choi",
+    "url": "https://github.com/jasonnoahchoi"
+  },
+  "repository": "https://github.com/jasonnoahchoi/tower",
+  "license": "MIT",
+  "keywords": ["session", "transcript", "live", "mirror", "scrollback", "tower"]
+}
