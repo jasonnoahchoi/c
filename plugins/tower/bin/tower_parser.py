@@ -234,13 +234,18 @@ def render_tool_use_basic(block: dict) -> str:
 
 # --- Tool rendering (rich markup for TUI mode) ---
 
+def _escape_rich(text: str) -> str:
+    """Escape brackets so rich/textual doesn't interpret them as markup tags."""
+    return text.replace("[", "\\[")
+
+
 def format_tool_detail_rich(name: str, inp: dict) -> str:
     """Render tool detail with rich markup for textual TUI."""
     lines = []
 
     if name in ("Edit", "MultiEdit"):
-        old = inp.get("old_string", "")
-        new = inp.get("new_string", "")
+        old = _escape_rich(inp.get("old_string", ""))
+        new = _escape_rich(inp.get("new_string", ""))
         for line in old.splitlines()[:15]:
             lines.append(f"[red]- {line}[/red]")
         if len(old.splitlines()) > 15:
@@ -251,7 +256,7 @@ def format_tool_detail_rich(name: str, inp: dict) -> str:
             lines.append(f"[dim]  ... ({len(new.splitlines()) - 15} more)[/dim]")
 
     elif name == "Write":
-        content = inp.get("content", "")
+        content = _escape_rich(inp.get("content", ""))
         for line in content.splitlines()[:15]:
             lines.append(f"[dim]  {line}[/dim]")
         if len(content.splitlines()) > 15:

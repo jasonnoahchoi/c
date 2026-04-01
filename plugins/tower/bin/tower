@@ -122,12 +122,9 @@ def main():
     tui_mode = False
 
     # Extract --tui / -i flag
-    if "--tui" in args:
+    if "--tui" in args or "-i" in args:
         tui_mode = True
-        args.remove("--tui")
-    elif "-i" in args:
-        tui_mode = True
-        args.remove("-i")
+        args = [a for a in args if a not in ("--tui", "-i")]
 
     # Handle --list (always basic mode)
     if args and args[0] == "--list":

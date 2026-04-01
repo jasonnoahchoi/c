@@ -111,6 +111,7 @@ class TowerApp(App):
         self.transcript_path = transcript_path
         self._message_count = 0
         self._closing = False
+        self._tail_offset = 0  # File offset after initial load
 
     def compose(self) -> ComposeResult:
         yield SessionHeader(self.transcript_path, id="header")
@@ -139,6 +140,7 @@ class TowerApp(App):
                             self._message_count += 1
                     except json.JSONDecodeError:
                         continue
+                self._tail_offset = f.tell()
         except FileNotFoundError:
             container.mount(Static("Waiting for transcript..."))
 
@@ -162,12 +164,27 @@ class TowerApp(App):
 
     @work(thread=True)
     def tail_file(self) -> None:
-        with open(self.transcript_path, encoding="utf-8") as f:
-            f.seek(0, 2)
+        # Wait for file to exist
+        while not self._closing:
+            try:
+                f = open(self.transcript_path, encoding="utf-8")
+                break
+            except FileNotFoundError:
+                time.sleep(1)
+        else:
+            return
+
+        with f:
+            f.seek(self._tail_offset)
+            partial = ""
             while not self._closing:
                 line = f.readline()
                 if line:
-                    line = line.strip()
+                    if not line.endswith("\n"):
+                        partial += line
+                        continue
+                    line = (partial + line).strip()
+                    partial = ""
                     if line:
                         try:
                             entry = json.loads(line)
@@ -235,8 +252,12 @@ class TowerApp(App):
             return
         for widget in self.query(MessageWidget):
             text = widget.message.text.lower()
-            tool_text = " ".join(tc.summary.lower() for tc in widget.message.tool_calls)
-            if query in text or query in tool_text:
+            tool_text = " ".join(
+                tc.summary.lower() + " " + tc.full_detail.lower()
+                for tc in widget.message.tool_calls
+            )
+            res_text = " ".join(tr.content.lower() for tr in widget.message.tool_results)
+            if query in text or query in tool_text or query in res_text:
                 widget.display = True
             else:
                 widget.display = False
