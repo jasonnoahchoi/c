@@ -5,7 +5,7 @@
     "email": ""
   },
   "metadata": {
-    "description": "Claude Code conversation tools — copy, export, and save sessions"
+    "description": "Claude Code conversation tools — copy, save, and live-mirror sessions"
   },
   "plugins": [
     {
@@ -32,6 +32,19 @@
       "repository": "https://github.com/jasonnoahchoi/c",
       "license": "MIT",
       "keywords": ["session", "transcript", "save", "precompact", "scrollback"],
+      "category": "productivity"
+    },
+    {
+      "name": "tower",
+      "source": "./plugins/tower",
+      "description": "Live conversation mirror - tail session transcripts in a split terminal pane",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jason Noah Choi"
+      },
+      "repository": "https://github.com/jasonnoahchoi/tower",
+      "license": "MIT",
+      "keywords": ["session", "transcript", "live", "mirror", "scrollback", "tower", "split-pane"],
       "category": "productivity"
     }
   ]
