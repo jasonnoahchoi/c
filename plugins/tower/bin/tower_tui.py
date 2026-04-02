@@ -49,7 +49,7 @@ class MessageWidget(Static):
                         RichText.from_markup(tc.full_detail_rich),
                         classes="diff-detail",
                     )
-                    self._diff_details.append(detail)
+                    detail.display = self.app.show_diffs
                     self.mount(detail)
 
     def render(self) -> RichText:
@@ -80,7 +80,8 @@ class MessageWidget(Static):
                     label = "[rgb(255,107,128)]ERROR[/rgb(255,107,128)]"
                 else:
                     label = "[rgb(78,186,101)]ok[/rgb(78,186,101)]"
-                parts.append(f"  ({label})\n  [rgb(153,153,153)]{_escape_rich(tr.content)}[/rgb(153,153,153)]")
+                content = _escape_rich(tr.content).replace("\n", "\n  ")
+                parts.append(f"  ({label})\n  [rgb(153,153,153)]{content}[/rgb(153,153,153)]")
 
         return "\n".join(parts)
 

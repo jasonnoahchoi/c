@@ -377,7 +377,8 @@ def render_entry_basic(entry: dict) -> str | None:
         parts = []
         for tr in msg.tool_results:
             label = f"{YELLOW}ERROR{RESET}" if tr.is_error else f"{DIM}ok{RESET}"
-            parts.append(f"{DIM}  ({label})\n  {tr.content}{RESET}")
+            content = tr.content.replace("\n", "\n  ")
+            parts.append(f"{DIM}  ({label})\n  {content}{RESET}")
         return f"\n{DIM}## Tools{RESET}\n" + "\n".join(parts) + "\n"
 
     elif msg.type == "assistant":
