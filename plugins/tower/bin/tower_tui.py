@@ -21,6 +21,12 @@ from tower_parser import parse_entry, Message, _escape_rich
 
 # --- Widgets ---
 
+class DiffDetail(Static):
+    """Expandable diff/tool detail block."""
+
+    DEFAULT_CSS = "DiffDetail { height: auto; padding: 0 0 0 2; }"
+
+
 class MessageWidget(Static):
     """A single message rendered as rich markup."""
 
@@ -28,8 +34,23 @@ class MessageWidget(Static):
 
     def __init__(self, message: Message, **kwargs):
         self.message = message
+        self._diff_details: list[DiffDetail] = []
         super().__init__(**kwargs)
         self.add_class(f"message-{message.type}")
+
+    def compose(self) -> ComposeResult:
+        yield from self._diff_details
+
+    def on_mount(self) -> None:
+        if self.message.type == "assistant":
+            for tc in self.message.tool_calls:
+                if tc.full_detail_rich:
+                    detail = DiffDetail(
+                        RichText.from_markup(tc.full_detail_rich),
+                        classes="diff-detail",
+                    )
+                    self._diff_details.append(detail)
+                    self.mount(detail)
 
     def render(self) -> RichText:
         markup = self._render_message(self.message)
@@ -50,6 +71,7 @@ class MessageWidget(Static):
                 parts.append(f"  {_escape_rich(msg.text)}")
             for tc in msg.tool_calls:
                 parts.append(f"  [rgb(253,93,177)]{_escape_rich(tc.summary)}[/rgb(253,93,177)]")
+            # Diff details are rendered as child DiffDetail widgets
 
         elif msg.type == "tool_result":
             parts.append("[rgb(153,153,153)]## Tools[/rgb(153,153,153)]")
@@ -58,7 +80,7 @@ class MessageWidget(Static):
                     label = "[rgb(255,107,128)]ERROR[/rgb(255,107,128)]"
                 else:
                     label = "[rgb(78,186,101)]ok[/rgb(78,186,101)]"
-                parts.append(f"  ({label}) [rgb(153,153,153)]{_escape_rich(tr.content[:100])}[/rgb(153,153,153)]")
+                parts.append(f"  ({label})\n  [rgb(153,153,153)]{_escape_rich(tr.content)}[/rgb(153,153,153)]")
 
         return "\n".join(parts)
 
@@ -220,9 +242,9 @@ class TowerApp(App):
             widget.display = self.show_tools
 
     def action_toggle_diffs(self) -> None:
-        # Diffs are pre-rendered in the static content now
-        # Toggle is a no-op until we re-add expandable tool calls
-        pass
+        self.show_diffs = not self.show_diffs
+        for widget in self.query(".diff-detail"):
+            widget.display = self.show_diffs
 
     def action_search(self) -> None:
         search = self.query_one("#search-input", Input)
