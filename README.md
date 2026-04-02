@@ -30,7 +30,7 @@ Together, the three plugins cover the full lifecycle:
 
 Live conversation mirror. Run in a split terminal pane to see your full session in real-time - including after `/clear` or `/compact` wipes your scrollback.
 
-![Tower running alongside Claude Code in Ghostty](assets/tower-demo.gif)
+<video src="assets/tower-demo.mp4" autoplay loop muted playsinline width="100%"></video>
 
 **Setup:**
 
