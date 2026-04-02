@@ -263,14 +263,14 @@ def format_tool_detail_rich(name: str, inp: dict) -> str:
             lines.append(f"[dim]  ... ({len(content.splitlines()) - 15} more)[/dim]")
 
     elif name == "Bash":
-        cmd = inp.get("command", "")
+        cmd = _escape_rich(inp.get("command", ""))
         for line in cmd.splitlines()[:10]:
             lines.append(f"[dim]$ {line}[/dim]")
         if len(cmd.splitlines()) > 10:
             lines.append(f"[dim]  ... ({len(cmd.splitlines()) - 10} more)[/dim]")
 
     elif name == "Read":
-        fp = inp.get("file_path", "")
+        fp = _escape_rich(inp.get("file_path", ""))
         offset = inp.get("offset", "")
         limit = inp.get("limit", "")
         if offset or limit:
@@ -278,7 +278,7 @@ def format_tool_detail_rich(name: str, inp: dict) -> str:
 
     else:
         for k, v in list(inp.items())[:5]:
-            v_str = str(v)[:120]
+            v_str = _escape_rich(str(v)[:120])
             lines.append(f"[dim]{k}: {v_str}[/dim]")
 
     return "\n".join(lines)
@@ -318,9 +318,9 @@ def parse_entry(entry: dict) -> Message | None:
                     is_err = block.get("is_error", False)
                     tc = block.get("content", "")
                     if isinstance(tc, list):
-                        tc = " ".join(b.get("text", "")[:100] for b in tc if b.get("type") == "text")
+                        tc = " ".join(b.get("text", "") for b in tc if b.get("type") == "text")
                     elif isinstance(tc, str):
-                        tc = tc[:100]
+                        pass
                     tool_results.append(ToolResult(is_error=is_err, content=tc))
             if user_texts:
                 return Message(type="user", text="\n".join(user_texts), raw=entry)
@@ -377,7 +377,8 @@ def render_entry_basic(entry: dict) -> str | None:
         parts = []
         for tr in msg.tool_results:
             label = f"{YELLOW}ERROR{RESET}" if tr.is_error else f"{DIM}ok{RESET}"
-            parts.append(f"{DIM}  ({label}) {tr.content}{RESET}")
+            content = tr.content.replace("\n", "\n  ")
+            parts.append(f"{DIM}  ({label})\n  {content}{RESET}")
         return f"\n{DIM}## Tools{RESET}\n" + "\n".join(parts) + "\n"
 
     elif msg.type == "assistant":
