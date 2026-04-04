@@ -50,7 +50,7 @@ if [ "$INSTALL_TUI" = true ]; then
         echo "Installing textual..."
         pip3 install --break-system-packages textual 2>/dev/null || pip3 install textual 2>/dev/null
         if python3 -c "import textual" 2>/dev/null; then
-            echo "[ok] textual installed - use: tower --tui or /tower:play"
+            echo "[ok] textual installed - use: tower --tui or /tower:tower-play"
         else
             echo "[warn] Could not install textual automatically"
             echo "       Install manually: pip install textual"

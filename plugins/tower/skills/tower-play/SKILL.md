@@ -1,5 +1,5 @@
 ---
-name: play
+name: tower-play
 description: "Launch the interactive TUI to browse, search, and navigate the conversation. Use when the user wants to search through what was said, browse tool calls, or explore the session interactively."
 argument-hint: "[session-id]"
 ---
