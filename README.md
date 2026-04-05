@@ -57,6 +57,7 @@ The setup script installs `tower` to `~/bin/` and auto-configures split-pane sho
 
 ```
 /tower:tower-watch  # Auto-detect terminal, open split pane, start mirroring
+/tower:tower-play   # Launch interactive TUI mode with search
 /tower:setup        # First-time install: binary, alias, terminal shortcuts
 ```
 
