@@ -56,11 +56,12 @@ The setup script installs `tower` to `~/bin/` and auto-configures split-pane sho
 **Usage from Claude Code (recommended):**
 
 ```
-/tower:watch        # Auto-detect terminal, open split pane, start mirroring
+/tower:tower-watch  # Auto-detect terminal, open split pane, start mirroring
+/tower:tower-play   # Launch interactive TUI mode with search
 /tower:setup        # First-time install: binary, alias, terminal shortcuts
 ```
 
-`/tower:watch` detects your terminal and programmatically opens a split pane with tower running. No manual window management needed.
+`/tower:tower-watch` detects your terminal and programmatically opens a split pane with tower running. No manual window management needed.
 
 **Usage from the terminal directly:**
 
@@ -189,7 +190,8 @@ c/
 │       │   ├── tower_parser.py    # Shared JSONL parser
 │       │   ├── tower_tui.py       # Interactive TUI (textual)
 │       │   └── tower_tui.css      # TUI styling
-│       ├── skills/watch/SKILL.md
+│       ├── skills/tower-watch/SKILL.md
+│       ├── skills/tower-play/SKILL.md
 │       ├── commands/setup.md
 │       ├── requirements.txt
 │       └── scripts/
